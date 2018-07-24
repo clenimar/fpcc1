@@ -1,0 +1,75 @@
+---
+title: "SCONE: Secure Linux Containers"
+output: html_notebook
+---
+
+### Introdução
+
+Este relatório visa a explanar o processo de tratamento e análise de dados colhidos de benchmarks realizados com a ferramenta SCONE, como proposto em seu white paper [1]. Este relatório é exercício para as disciplinas de Fundamentos de Pesquisa para a Ciência da Computação - FPCC.
+
+A proposta do SCONE é permitir que, utilizando-se de tecnologias recentes de criptografia em hardware i.e. Intel SGX, uma aplicação possa, sem sobretrabalho de desenvolvimento, ser executada dentro de enclaves e, portanto, de forma protegida. Enclaves, no entanto, impõem um peso extra que pode, com efeito, afetar o desempenho das aplicações executadas.
+
+Este relatório apresenta os resultados obtidos na repetição dos experimentos realizados em [1], onde o desempenho de quatro aplicações (Apache, NGINX, Memcached e Redis) é avaliado com e sem uso de SCONE.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+```
+
+### Análise I: Apache Web Server
+
+#### Análise exploratória dos dados
+
+```{r}
+apache_data = read_csv("../data/apache_seconds_100k.csv")
+```
+
+Tempos mínimos e máximos:
+```{r}
+show_min_max <- function(d) {
+for (r in c(1000, 5000, 10000, 20000, 40000, 60000, 80000)) {
+    for (t in c("noscone", "scone-async", "scone-sync")) {
+        filtered = d %>% filter(type==t, reqs==r)
+        print(paste(t, "/", r, "=====>", "min:", min(filtered$avg), "/max:", max(filtered$avg))) 
+    }
+}
+}
+show_min_max(apache_data)
+```
+
+Removendo outliers (como feito no artigo) - os 30% menores e os 30% maiores:
+
+```{r}
+noscone40k = apache_data %>%
+    filter(type == "noscone", reqs == 40000) %>%
+    summarise(Latency=mean(avg, trim=0.3))
+noscone40k
+
+noscone80k = apache_data %>%
+    filter(type == "noscone", reqs == 80000) %>%
+    summarise(Latency=mean(avg, trim=0.3))
+noscone80k
+
+ssync80k = apache_data %>%
+    filter(type == "scone-sync", reqs == 80000) %>%
+    summarise(Latency=mean(avg, trim=0.3))
+ssync80k
+
+sasync80k = apache_data %>%
+    filter(type == "scone-async", reqs == 80000) %>%
+    summarise(Latency=mean(avg, trim=0.3))
+sasync80k
+```
+
+
+```{r}
+d <- aggregate(apache_data$avg, by=list(throughput = apache_data$reqs, type = apache_data$type), FUN=mean)
+
+ggplot(d, aes(x=d$throughput, y=d$x, color=d$type)) + 
+    geom_line() +
+    ylim(0, 5)
+```
+
+```{r}
+
+```
