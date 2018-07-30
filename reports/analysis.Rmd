@@ -21,55 +21,39 @@ library(dplyr)
 #### Análise exploratória dos dados
 
 ```{r}
-apache_data = read_csv("../data/apache_seconds_100k.csv")
+apache_data = read_csv("../data/apache-dara.csv")
+redis_data = read_csv("../data/redis-data.csv")
 ```
 
-Tempos mínimos e máximos:
 ```{r}
-show_min_max <- function(d) {
-for (r in c(1000, 5000, 10000, 20000, 40000, 60000, 80000)) {
-    for (t in c("noscone", "scone-async", "scone-sync")) {
-        filtered = d %>% filter(type==t, reqs==r)
-        print(paste(t, "/", r, "=====>", "min:", min(filtered$avg), "/max:", max(filtered$avg))) 
-    }
-}
-}
-show_min_max(apache_data)
-```
-
-Removendo outliers (como feito no artigo) - os 30% menores e os 30% maiores:
-
-```{r}
-noscone40k = apache_data %>%
-    filter(type == "noscone", reqs == 40000) %>%
-    summarise(Latency=mean(avg, trim=0.3))
-noscone40k
-
-noscone80k = apache_data %>%
-    filter(type == "noscone", reqs == 80000) %>%
-    summarise(Latency=mean(avg, trim=0.3))
-noscone80k
-
-ssync80k = apache_data %>%
-    filter(type == "scone-sync", reqs == 80000) %>%
-    summarise(Latency=mean(avg, trim=0.3))
-ssync80k
-
-sasync80k = apache_data %>%
-    filter(type == "scone-async", reqs == 80000) %>%
-    summarise(Latency=mean(avg, trim=0.3))
-sasync80k
-```
-
-
-```{r}
-d <- aggregate(apache_data$avg, by=list(throughput = apache_data$reqs, type = apache_data$type), FUN=mean)
+d <- aggregate(apache_data$avg, by=list(throughput = apache_data$requests, type = apache_data$type), mean, trim=.3)
 
 ggplot(d, aes(x=d$throughput, y=d$x, color=d$type)) + 
-    geom_line() +
-    ylim(0, 5)
+    geom_line() + geom_point() +
+    ylim(0, 7) + 
+    xlim(0, 80000) +
+    xlab("Throughput (reqs/s)") +
+    ylab("Latency (s)") +
+    labs(color="Type")
 ```
 
 ```{r}
+redis_avg_latency <- aggregate(redis_data$latency, by=list(c=redis_data$clients, type=redis_data$type), mean, trim=.3)
+redis_throughput <- aggregate(redis_data$throughput, by=list(c=redis_data$clients, type=redis_data$type), mean, trim=.3)
 
+s <- merge(redis_avg_latency, redis_throughput, by=c("type", "c"))
+
+ggplot(s, aes(x=s$c, y=s$x.x, color=s$type)) + 
+    geom_line() + geom_point() +
+    xlab("Concurrent clients") +
+    ylab("Latency (ms)") +
+    labs(color="Type")
+```
+
+```{r}
+ggplot(s, aes(x=s$c, y=s$x.y, color=s$type)) + 
+    geom_line() + geom_point() +
+    xlab("Concurrent clients") +
+    ylab("Throughput (ops/s)") +
+    labs(color="Type")
 ```
