@@ -21,8 +21,9 @@ library(dplyr)
 #### Análise exploratória dos dados
 
 ```{r}
-apache_data = read_csv("../data/apache-dara.csv")
+apache_data = read_csv("../data/apache-data.csv")
 redis_data = read_csv("../data/redis-data.csv")
+memcached_data = read_csv("../data/memcached-data.csv")
 ```
 
 ```{r}
@@ -52,6 +53,28 @@ ggplot(s, aes(x=s$c, y=s$x.x, color=s$type)) +
 
 ```{r}
 ggplot(s, aes(x=s$c, y=s$x.y, color=s$type)) + 
+    geom_line() + geom_point() +
+    xlab("Concurrent clients") +
+    ylab("Throughput (ops/s)") +
+    labs(color="Type")
+```
+
+
+```{r}
+memcached_avg_latency <- aggregate(memcached_data$latency, by=list(c=memcached_data$clients, type=memcached_data$type), mean, trim=.3)
+memcached_throughput <- aggregate(memcached_data$throughput, by=list(c=memcached_data$clients, type=memcached_data$type), mean, trim=.3)
+
+q <- merge(memcached_avg_latency, memcached_throughput, by=c("type", "c"))
+q
+ggplot(q, aes(x=q$c, y=q$x.x, color=q$type)) + 
+    geom_line() + geom_point() +
+    xlab("Concurrent clients") +
+    ylab("Latency (ms)") +
+    labs(color="Type")
+```
+
+```{r}
+ggplot(q, aes(x=q$c, y=q$x.y, color=q$type)) + 
     geom_line() + geom_point() +
     xlab("Concurrent clients") +
     ylab("Throughput (ops/s)") +
